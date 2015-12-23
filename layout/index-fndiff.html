@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style type="text/css">
+  body { background-color: #000; }
+</style>
+<body>
+<script src="//d3js.org/d3.v3.min.js"></script>
+<script src="//d3js.org/queue.v1.min.js"></script>
+<script src="//d3js.org/topojson.v1.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+<script>
+$(function(){
+  var width = 1200,
+      height = 600,
+      //fndiffcolors = ["#542788","#998ec3","#d8daeb","#fee0b6","#f1a340","#b35806"];
+      //fndiffcolors = ["#542788","#b35806"];
+      //fndiffcolors = ["#998ec3","#f7f7f7","#f1a340"];
+      //fndiffcolors = ["#e9a3c9","#f7f7f7","#a1d76a"];
+      fndiffcolors = ["#5ab4ac","#f5f5f5","#d8b365"];
+      //fndiffcolors = ["#5ab4ac","#d8b365"];
+
+  var svg = d3.select("body").append("svg").attr("width", width).attr("height", height),
+      legend = svg.append("g").attr("class", "legend").attr("transform", "translate(200,300)");
+
+  var projection = d3.geo.mercator()
+        .center([3.098, 46.536])
+        .scale(2000)
+        .translate([width/2, height/2]);
+
+  var path = d3.geo.path().projection(projection);
+
+  queue()
+      .defer(d3.json, "../geo/FRmuni.json")
+      .defer(d3.csv, "../data/RG2015/DATARG2015.csv")
+      .await(ready);
+
+  function ready(error, map, data) {
+
+    var FnDiffById = {},
+        FNT1 = {},
+        FNT2 = {};
+
+    data.forEach(function(d) {
+        FNT1[d.INSEE]=d.PCFNT1;
+        FNT2[d.INSEE]=d.PCFNT2;
+        FnDiffById[d.INSEE]=d.DIFF_PCFN;
+    });
+
+    var Top = d3.scale.threshold() // Threshold scale
+                .domain([500,1000, 3000, 5000, 10000, 20000, 50000, 100000, 300000, 400000, 2240622])
+                .range([0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]);
+
+    var abst = d3.scale.threshold() // Threshold scale
+                //.domain([0,50])
+                .domain([-2.5,2.5,50])
+                //.range(["#d7191c","#fdae61","#ffffbf","#a6d96a","#1a9641"]);
+                .range(fndiffcolors);
+                //.range(["#003c30","#01665e","#35978f","#80cdc1","#c7eae5"]);
+
+    // var abstLog = d3.scale.log(10) // LOG scale
+    //           .domain([95.20,31.44])
+    //           .range(["#003c30","#c7eae5"]);
+
+    svg.append("g")
+        .attr("class", "muni")
+        .selectAll("path")
+        .data(topojson.feature(map, map.objects.communes).features)
+        .enter().append("path")
+        .attr("d", path)
+        .style("fill", function(d){
+          return abst(FnDiffById[d.properties.INSEE_COM]);
+        })
+        .on("mouseover", function(d){
+          console.log(d.properties.NOM_COM);
+          console.log(d.properties.INSEE_COM);
+          console.log(FNT1[d.properties.INSEE_COM]);
+          console.log(FNT2[d.properties.INSEE_COM]);
+          console.log(FnDiffById[d.properties.INSEE_COM]);
+        })
+        .style("fill-opacity", function(d){
+          return Top(d.properties.POPULATION);
+        })
+;
+  };
+
+   g_legend = legend.selectAll("rect");
+
+  // LEGEND
+  function create_legend(colors,y,op){
+    g_legend.data(colors)
+      .enter()
+      .append("svg:rect")
+      .attr("class", "rect")
+      .attr("x", function(d,i){return i*10;})
+      .attr("y", 100-y)
+      .attr("width", 10)
+      .attr("height", 5)
+      .style("fill", function(d){return d;})
+      .style("fill-opacity", op);
+  };
+
+  for (j=0; j<=50; j+=5) {
+    console.log(j);
+    l=j/50; // Opacity value
+    create_legend(fndiffcolors, j, l);
+  };
+
+});
+
+</script>
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style type="text/css">
+  body { background-color: #000; }
+</style>
+<body>
+<script src="//d3js.org/d3.v3.min.js"></script>
+<script src="//d3js.org/queue.v1.min.js"></script>
+<script src="//d3js.org/topojson.v1.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+<script>
+$(function(){
+  var width = 1200,
+      height = 600,
+      abstColors = ["#7a0177","#c51b8a","#f768a1","#fbb4b9","#feebe2"];
+
+  var svg = d3.select("body").append("svg").attr("width", width).attr("height", height),
+      legend = svg.append("g").attr("class", "legend").attr("transform", "translate(200,300)");
+
+  var projection = d3.geo.mercator()
+        .center([3.098, 46.536])
+        .scale(2000)
+        .translate([width/2, height/2]);
+
+  var path = d3.geo.path().projection(projection);
+
+  queue()
+      .defer(d3.json, "../geo/FRmuni.json")
+      .defer(d3.csv, "../data/RG2015/DATARG2015.csv")
+      .await(ready);
+
+  function ready(error, map, data) {
+
+    var AbsDiffById = {};
+
+    data.forEach(function(d) {
+        AbsDiffById[d.INSEE]=d.DIFF_ABS;
+    });
+
+    var Top = d3.scale.threshold() // Threshold scale
+                .domain([500,1000, 3000, 5000, 10000, 20000, 50000, 100000, 300000, 400000, 2240622])
+                .range([0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]);
+
+    var abst = d3.scale.threshold() // Threshold scale
+                //.domain([-9.25,-7.51,0,5.43,36.84])
+                .domain([-13,-11,-9,-7,-5,-3,-1,1,36.84])
+                .range(["#f7fcfd","#e5f5f9","#ccece6","#99d8c9","#66c2a4","#41ae76","#238b45","#005824","#9e0142"]);
+                //.range(["#49006a","#7a0177","#ae017e","#dd3497","#f768a1","#fa9fb5","#fcc5c0","#fde0dd","#fff7f3","#1a9850"]);
+                //.range(["#d01c8b","#f1b6da","#f7f7f7","#b8e186","#4dac26"]);
+                //.range(["#003c30","#01665e","#35978f","#80cdc1","#c7eae5"]);
+
+    // var abstLog = d3.scale.log(10) // LOG scale
+    //           .domain([95.20,31.44])
+    //           .range(["#003c30","#c7eae5"]);
+
+    svg.append("g")
+        .attr("class", "muni")
+        .selectAll("path")
+        .data(topojson.feature(map, map.objects.communes).features)
+        .enter().append("path")
+        .attr("d", path)
+        .style("fill", function(d){
+          return abst(AbsDiffById[d.properties.INSEE_COM]);
+        })
+        .on("mouseover", function(d){
+          console.log(d.properties.NOM_COM);
+          console.log(d.properties.INSEE_COM);
+          console.log(AbsDiffById[d.properties.INSEE_COM]);
+        })
+        .style("fill-opacity", function(d){
+          return Top(d.properties.POPULATION);
+        });
+  };
+
+   g_legend = legend.selectAll("rect");
+
+  // LEGEND
+  function create_legend(colors,y,op){
+    g_legend.data(colors)
+      .enter()
+      .append("svg:rect")
+      .attr("class", "rect")
+      .attr("x", function(d,i){return i*10;})
+      .attr("y", 100-y)
+      .attr("width", 10)
+      .attr("height", 5)
+      .style("fill", function(d){return d;})
+      .style("fill-opacity", op);
+  };
+
+  for (j=0; j<=50; j+=5) {
+    console.log(j);
+    l=j/50; // Opacity value
+    create_legend(abstColors, j, l);
+  };
+
+});
+
+</script>
+</body>
+</html>
